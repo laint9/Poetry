@@ -1,4 +1,4 @@
-/* Poenote — phần dùng chung: cấu hình, lưu trữ GitHub, nhạc, ảnh, cuốn sổ. */
+/* Poenote — phần dùng chung: cấu hình, thư viện trên Netlify, nhạc, ảnh, cuốn sổ. */
 (function () {
   'use strict';
   var P = window.Poenote = {};
@@ -35,82 +35,57 @@
   P.COLORS = [['lime', 'Chanh'], ['mint', 'Bạc hà'], ['beige', 'Giấy dó'], ['blush', 'Hồng phấn'], ['sky', 'Trời']];
 
   /* ---------- cấu hình ---------- */
+  var HOME = 'https://poenote.netlify.app/';
   var DEFAULT = { owner: 'laint9', repo: 'Poetry', branch: 'main', libraryName: "Laint's Poem" };
   P.cfg = function (patch) {
     var c = Object.assign({}, DEFAULT, P.ls('poenote.cfg') || {});
     if (patch) { c = Object.assign(c, patch); P.ls('poenote.cfg', c); }
     return c;
   };
-  P.token = function (v) { if (v !== undefined) P.ls('poenote.token', v || null); return P.ls('poenote.token'); };
+  /** Mã chủ sổ: chỉ nằm trên máy này, gửi kèm mỗi lần lưu hoặc xoá bài. */
+  P.token = function (v) { if (v !== undefined) P.ls('poenote.code', v || null); return P.ls('poenote.code'); };
   P.isOwner = function () { return !!P.token() || !!P.ls('poenote.owner'); };
+  var LOCAL = /^https?:$/.test(location.protocol) && !/^(localhost|127\.|\[::1\]|0\.0\.0\.0)/.test(location.hostname);
   P.siteUrl = function () {
-    var c = P.cfg();
-    // trang đang chạy trên mạng (Netlify, GitHub Pages…): chia sẻ đúng địa chỉ đang dùng
-    if (/^https?:$/.test(location.protocol) && !/^(localhost|127\.|\[::1\]|0\.0\.0\.0)/.test(location.hostname)) return location.origin + location.pathname.replace(/[^/]*$/, '');
-    return 'https://' + c.owner.toLowerCase() + '.github.io/' + c.repo + '/';
+    // trang đang chạy trên mạng: chia sẻ đúng địa chỉ đang dùng
+    if (LOCAL) return location.origin + location.pathname.replace(/[^/]*$/, '');
+    return HOME;
+  };
+  /** Thư viện nằm trên Netlify. Trang ở nơi khác (GitHub Pages) gọi sang poenote.netlify.app. */
+  P.apiBase = function () {
+    if (/github\.io$/.test(location.hostname) || !/^https?:$/.test(location.protocol)) return HOME + 'api/';
+    return location.origin + '/api/';
   };
   P.rawUrl = function (path) { var c = P.cfg(); return 'https://raw.githubusercontent.com/' + c.owner + '/' + c.repo + '/' + c.branch + '/' + path; };
 
-  /* ---------- GitHub API ---------- */
+  /* ---------- API thư viện (Netlify) ---------- */
   function api(path, opts) {
-    var c = P.cfg(), t = P.token();
     opts = opts || {};
-    var h = { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
-    if (t) h.Authorization = 'Bearer ' + t;
+    var h = {};
     if (opts.body) h['Content-Type'] = 'application/json';
-    return fetch('https://api.github.com/repos/' + c.owner + '/' + c.repo + path, { method: opts.method || 'GET', headers: h, body: opts.body ? JSON.stringify(opts.body) : undefined, cache: 'no-store' })
+    if (opts.auth) h['X-Owner-Code'] = P.token() || '';
+    return fetch(P.apiBase() + path, { method: opts.method || 'GET', headers: h, body: opts.body ? JSON.stringify(opts.body) : undefined, cache: 'no-store' })
       .then(function (r) {
-        if (r.status === 404 && opts.allow404) return null;
         return r.json().catch(function () { return {}; }).then(function (j) {
-          if (!r.ok) { var e = new Error(j.message || ('GitHub lỗi ' + r.status)); e.status = r.status; throw e; }
+          if (!r.ok) { var e = new Error(j.error || ('Máy chủ lỗi ' + r.status)); e.status = r.status; throw e; }
           return j;
         });
-      });
+      }, function () { var e = new Error('Không có mạng hoặc máy chủ chưa trả lời'); e.status = 0; throw e; });
   }
-  function b64ToText(b64) {
-    var bin = atob(b64.replace(/\s/g, '')), bytes = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return new TextDecoder('utf-8').decode(bytes);
-  }
-  function textToB64(s) {
-    var bytes = new TextEncoder().encode(s), bin = '';
-    for (var i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
-    return btoa(bin);
-  }
-  P.blobToB64 = function (blob) {
-    return new Promise(function (res, rej) { var r = new FileReader(); r.onload = function () { res(String(r.result).split(',')[1]); }; r.onerror = rej; r.readAsDataURL(blob); });
-  };
-  P.gh = {
-    check: function () { return api(''); },
-    getJson: function (path) {
-      return api('/contents/' + path + '?ref=' + P.cfg().branch, { allow404: true }).then(function (f) {
-        if (!f) return { sha: null, data: null };
-        return { sha: f.sha, data: JSON.parse(b64ToText(f.content)) };
-      });
-    },
-    putB64: function (path, b64, message, sha) {
-      var body = { message: message, content: b64, branch: P.cfg().branch };
-      if (sha) body.sha = sha;
-      return api('/contents/' + path, { method: 'PUT', body: body });
-    },
-    putJson: function (path, obj, message, sha) { return P.gh.putB64(path, textToB64(JSON.stringify(obj, null, 1) + '\n'), message, sha); },
-    remove: function (path, message) {
-      return api('/contents/' + path + '?ref=' + P.cfg().branch, { allow404: true }).then(function (f) {
-        if (!f) return null;
-        return api('/contents/' + path, { method: 'DELETE', body: { message: message, sha: f.sha, branch: P.cfg().branch } });
-      });
-    }
+  P.server = {
+    status: function () { return api('status'); },
+    claim: function (code) { return api('claim', { method: 'POST', body: { code: code } }); },
+    login: function (code) { return api('login', { method: 'POST', body: { code: code } }); }
   };
 
   /* ---------- Thư viện ---------- */
   var LIB = 'library/poems.json';
   P.loadLibrary = function () {
-    // chủ sổ có token: đọc qua API (luôn mới nhất); khách: đọc tệp tĩnh trên GitHub Pages
-    var viaApi = P.token() ? P.gh.getJson(LIB).then(function (r) { return r.data; }) : Promise.reject();
-    return viaApi.catch(function () {
+    return api('library').catch(function () {
+      // mất mạng: dùng bản đã lưu trên máy; chưa có thì đọc bản tĩnh cũ
+      var c = P.ls('poenote.libcache');
+      if (c && c.poems) { c.poems = c.poems.filter(function (q) { return !q._pending; }); return c; }
       return fetch(LIB + '?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { if (!r.ok) throw 0; return r.json(); });
-    }).catch(function () {
-      return fetch(P.rawUrl(LIB) + '?t=' + Date.now()).then(function (r) { if (!r.ok) throw 0; return r.json(); });
     }).catch(function () { return null; }).then(function (lib) {
       lib = lib || { title: P.cfg().libraryName, poems: [] };
       lib.poems = lib.poems || [];
@@ -127,41 +102,19 @@
     });
   };
 
-  function extOf(mime, fallback) {
-    return ({ 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a', 'audio/aac': 'm4a', 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/ogg': 'ogg', 'audio/webm': 'webm' })[mime] || fallback;
-  }
-  function dataUrlToBlob(u) { return fetch(u).then(function (r) { return r.blob(); }); }
-
-  /** Đẩy một bài (kèm ảnh/nhạc dạng data URL) lên repo. Trả về bài đã lưu. */
+  /** Lưu một bài (kèm ảnh/nhạc dạng data URL) lên thư viện. Trả về bài đã lưu. */
   P.publishPoem = function (poem, onStep) {
     onStep = onStep || function () {};
     var p = JSON.parse(JSON.stringify(poem)); delete p._pending;
-    var chain = Promise.resolve();
-    if (p.image && /^data:/.test(p.image)) {
-      chain = chain.then(function () { onStep('Đang tải ảnh lên…'); return dataUrlToBlob(p.image); }).then(function (b) {
-        var path = 'library/media/' + p.id + '.' + extOf(b.type, 'jpg');
-        return P.blobToB64(b).then(function (b64) { return api('/contents/' + path + '?ref=' + P.cfg().branch, { allow404: true }).then(function (f) { return P.gh.putB64(path, b64, 'Ảnh cho bài: ' + p.title, f && f.sha); }); }).then(function () { p.image = path; });
-      });
-    }
-    if (p.music && p.music.type === 'file' && /^data:/.test(p.music.src)) {
-      chain = chain.then(function () { onStep('Đang tải nhạc lên…'); return dataUrlToBlob(p.music.src); }).then(function (b) {
-        var path = 'library/media/' + p.id + '.' + extOf(b.type, 'mp3');
-        return P.blobToB64(b).then(function (b64) { return api('/contents/' + path + '?ref=' + P.cfg().branch, { allow404: true }).then(function (f) { return P.gh.putB64(path, b64, 'Nhạc cho bài: ' + p.title, f && f.sha); }); }).then(function () { p.music.src = path; });
-      });
-    }
-    return chain.then(function () { onStep('Đang cập nhật ' + P.cfg().libraryName + '…'); return P.gh.getJson(LIB); }).then(function (r) {
-      var lib = r.data || { title: P.cfg().libraryName, poems: [] };
-      lib.title = P.cfg().libraryName;
-      lib.poems = (lib.poems || []).filter(function (q) { return q.id !== p.id; });
-      lib.poems.unshift(p);
-      return P.gh.putJson(LIB, lib, (r.data && r.data.poems && r.data.poems.some(function (q) { return q.id === p.id; }) ? 'Sửa bài: ' : 'Thêm bài: ') + p.title, r.sha);
-    }).then(function () {
+    var heavy = /^data:/.test(p.image || '') || (p.music && /^data:/.test(p.music.src || ''));
+    onStep(heavy ? 'Đang tải ảnh, nhạc và lưu bài…' : 'Đang lưu vào ' + P.cfg().libraryName + '…');
+    return api('poems/' + encodeURIComponent(p.id), { method: 'PUT', body: { poem: p }, auth: true }).then(function (r) {
       var pend = (P.ls('poenote.pending') || []).filter(function (q) { return q.id !== p.id; });
       P.ls('poenote.pending', pend);
-      return p;
+      return r.poem;
     });
   };
-  /** Lưu bài vào hàng chờ trên máy (khi chưa kết nối GitHub hoặc mất mạng). */
+  /** Lưu bài vào hàng chờ trên máy (khi chưa mở khoá sổ hoặc mất mạng). */
   P.queuePoem = function (poem) {
     var pend = (P.ls('poenote.pending') || []).filter(function (q) { return q.id !== poem.id; });
     pend.unshift(poem);
@@ -178,23 +131,15 @@
     return pend.reduce(function (ch, p) { return ch.then(function () { return P.publishPoem(p, onStep).then(function () { done++; }); }); }, Promise.resolve())
       .then(function () {
         var del = P.ls('poenote.deleted') || [];
-        return del.reduce(function (ch, id) { return ch.then(function () { return P.deletePoem(id, true); }); }, Promise.resolve());
+        return del.reduce(function (ch, id) { return ch.then(function () { return P.deletePoem(id); }); }, Promise.resolve());
       }).then(function () { return done; });
   };
-  P.deletePoem = function (id, fromQueue) {
+  P.deletePoem = function (id) {
     var pend = (P.ls('poenote.pending') || []).filter(function (q) { return q.id !== id; });
     P.ls('poenote.pending', pend);
     if (!P.token()) { var d = P.ls('poenote.deleted') || []; if (d.indexOf(id) < 0) d.push(id); P.ls('poenote.deleted', d); return Promise.resolve(); }
-    return P.gh.getJson(LIB).then(function (r) {
-      if (!r.data) return;
-      var victim = r.data.poems.filter(function (q) { return q.id === id; })[0];
-      if (!victim) return;
-      r.data.poems = r.data.poems.filter(function (q) { return q.id !== id; });
-      return P.gh.putJson(LIB, r.data, 'Xoá bài: ' + victim.title, r.sha).then(function () {
-        var media = [victim.image, victim.music && victim.music.type === 'file' && victim.music.src].filter(function (x) { return x && /^library\/media\//.test(x); });
-        return Promise.all(media.map(function (m) { return P.gh.remove(m, 'Xoá tệp của bài: ' + victim.title).catch(function () {}); }));
-      });
-    }).then(function () { var d = (P.ls('poenote.deleted') || []).filter(function (x) { return x !== id; }); P.ls('poenote.deleted', d); });
+    return api('poems/' + encodeURIComponent(id), { method: 'DELETE', auth: true })
+      .then(function () { var d = (P.ls('poenote.deleted') || []).filter(function (x) { return x !== id; }); P.ls('poenote.deleted', d); });
   };
 
   /* ---------- Ảnh ---------- */
@@ -212,11 +157,11 @@
       img.src = url;
     });
   };
-  /** Đường dẫn hiển thị cho ảnh/nhạc đã lưu (tương đối trên Pages, dự phòng raw GitHub). */
-  P.mediaSrc = function (path) { if (!path) return ''; if (/^(data:|https?:)/.test(path)) return path; return path; };
+  /** Đường dẫn hiển thị cho ảnh/nhạc đã lưu: api/media/… nằm trên Netlify; library/media/… là bản cũ trên GitHub. */
+  P.mediaSrc = function (path) { if (!path) return ''; if (/^(data:|https?:|blob:)/.test(path)) return path; if (/^api\//.test(path)) return P.apiBase().replace(/api\/$/, '') + path; return path; };
   P.imgFallback = function (img) {
     var p = img.getAttribute('data-path');
-    if (p && !img.dataset.tried) { img.dataset.tried = '1'; img.src = P.rawUrl(p); }
+    if (p && /^library\//.test(p) && !img.dataset.tried) { img.dataset.tried = '1'; img.src = P.rawUrl(p); }
   };
 
   /* ---------- Nhạc ---------- */
@@ -239,8 +184,8 @@
     if (!music) return '';
     var t = P.esc(music.title || '');
     if (music.type === 'file') {
-      var src = P.esc(music.src);
-      return '<div class="mplay">' + (t ? '<div class="small" style="margin-bottom:6px">♪ ' + t + '</div>' : '') + '<audio controls preload="none" src="' + src + '" data-path="' + src + '" onerror="Poenote.imgFallback(this)"></audio></div>';
+      var src = P.esc(P.mediaSrc(music.src));
+      return '<div class="mplay">' + (t ? '<div class="small" style="margin-bottom:6px">♪ ' + t + '</div>' : '') + '<audio controls preload="none" src="' + src + '" data-path="' + P.esc(music.src) + '" onerror="Poenote.imgFallback(this)"></audio></div>';
     }
     if (music.embed) return (t ? '<div class="small" style="margin-bottom:6px">♪ ' + t + '</div>' : '') + '<iframe class="embed" src="' + P.esc(music.embed) + '" height="' + (music.height || 152) + '" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" title="Trình phát nhạc"></iframe>';
     return '<a class="btn sm" href="' + P.esc(music.url) + '" target="_blank" rel="noopener">♪ ' + (t || 'Mở bài hát') + '</a>';
@@ -277,6 +222,25 @@
       '<div class="nb-img"' + (opts.editable ? ' data-act="image" role="button" tabindex="0" aria-label="Thêm ảnh"' : '') + '>' + img + music + '</div>' +
       '<div class="nb-blk"><div class="k">' + P.esc([P.formName(p.form), P.fmtDate(p.createdAt)].filter(Boolean).join(' · ')) + (p._pending ? ' · chưa đồng bộ' : '') + '</div>' +
       '<h3>' + P.esc(p.title || 'Chưa đặt tên') + '</h3>' + (opts.compact ? '' : '<p>' + P.esc(lines.slice(0, 2).join('\n') || 'Bắt đầu viết bên dưới…') + '</p>') + '</div>' +
+      '</article>';
+  };
+
+  /** Tờ note dán trong sổ: giấy màu, góc gập, dòng kẻ, nhãn thể thơ và nhạc ở chân. */
+  P.noteCard = function (p, opts) {
+    opts = opts || {};
+    var color = p.color || 'lime';
+    var lines = String(p.text || '').split('\n').filter(function (l) { return l.trim(); });
+    var n = opts.compact ? 3 : 5;
+    var form = P.formName(p.form);
+    var tags = (form ? '<span class="nt-tag">' + P.esc(form) + '</span>' : '') +
+      (p.music ? '<span class="nt-tag">' + P.ICONS.note + '<span>' + P.esc(p.music.title || p.music.label || 'Nhạc') + '</span></span>' : '') +
+      (p._pending ? '<span class="nt-tag nt-wait">chưa đồng bộ</span>' : '');
+    return '<article class="sticky c-' + P.esc(color) + (opts.compact ? ' sm' : '') + '">' +
+      '<div class="nt-date">' + P.esc(P.fmtDate(p.createdAt)) + '</div>' +
+      '<h3 class="nt-title">' + P.esc(p.title || 'Chưa đặt tên') + '</h3>' +
+      (p.image ? '<div class="nt-img"><img alt="" src="' + P.esc(P.mediaSrc(p.image)) + '" data-path="' + P.esc(p.image) + '" onerror="Poenote.imgFallback(this)" loading="lazy"></div>' : '') +
+      '<p class="nt-text" style="-webkit-line-clamp:' + n + '">' + P.esc(lines.slice(0, n + 1).join('\n') || '…') + '</p>' +
+      (tags ? '<div class="nt-tags">' + tags + '</div>' : '') +
       '</article>';
   };
 
