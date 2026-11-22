@@ -32,6 +32,16 @@ Mỗi bài có link riêng dạng `https://laint9.github.io/Poetry/#poem-<mã b�
 
 Chưa có mã thì nút + vẫn chạy: bài được giữ trên máy và tự đồng bộ khi bạn kết nối.
 
+## Netlify và cài lên iPhone
+
+- Repo đã có `netlify.toml`: trên Netlify chọn *Add new site → Import from GitHub → laint9/Poetry*,
+  để trống build command, publish directory `.`. Mỗi lần nút + lưu bài (một commit mới),
+  Netlify tự đăng lại sau vài giây.
+- Cài như ứng dụng: mở `…/write.html` bằng **Safari** trên iPhone → nút *Chia sẻ* →
+  *Thêm vào MH chính* → *Thêm*. Biểu tượng Poenote hiện trên màn hình chính, mở toàn màn hình
+  và vẫn mở được khi mất mạng.
+- Ứng dụng đã cài có bộ nhớ riêng, tách khỏi Safari: mở nó lên rồi dán lại mã GitHub ở ⚙.
+
 ## Nhạc
 
 - Dán link **Spotify**, **YouTube / YouTube Music**, **Apple Music** hoặc **SoundCloud**:
