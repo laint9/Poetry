@@ -1,13 +1,13 @@
-// Poenote ‚Äî ph·∫ßn l√µi c·ªßa API l∆∞u th∆∞ vi·ªán tr√™n Netlify.
-// T√°ch kh·ªèi @netlify/blobs ƒë·ªÉ ch·∫°y th·ª≠ ƒë∆∞·ª£c b·∫±ng m·ªôt kho gi·∫£ trong b·ªô nh·ªõ.
+// Poenote — phần lõi của API lưu thư viện trên Netlify.
+// Tách khỏi @netlify/blobs để chạy thử được bằng một kho giả trong bộ nhớ.
 //
 //   GET    /api/status          { claimed, count }
-//   POST   /api/claim           { code }   ƒë·∫∑t m√£ ch·ªß s·ªï (ch·ªâ m·ªôt l·∫ßn)
-//   POST   /api/login           { code }   ki·ªÉm tra m√£
+//   POST   /api/claim           { code }   đặt mã chủ sổ (chỉ một lần)
+//   POST   /api/login           { code }   kiểm tra mã
 //   GET    /api/library         { title, poems }
-//   PUT    /api/poems/:id       { poem }   th√™m / s·ª≠a (c·∫ßn m√£)
-//   DELETE /api/poems/:id                  xo√° (c·∫ßn m√£)
-//   GET    /api/media/:key                 ·∫£nh / nh·∫°c ƒë√£ t·∫£i l√™n
+//   PUT    /api/poems/:id       { poem }   thêm / sửa (cần mã)
+//   DELETE /api/poems/:id                  xoá (cần mã)
+//   GET    /api/media/:key                 ảnh / nhạc đã tải lên
 
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 
@@ -53,7 +53,7 @@ function cleanPoem(p, id) {
   const now = new Date().toISOString();
   return {
     id,
-    title: str(p.title, 200).trim() || 'Kh√¥ng t√™n',
+    title: str(p.title, 200).trim() || 'Không tên',
     text: str(p.text, 30000),
     form: str(p.form, 40),
     color: ['lime', 'mint', 'beige', 'blush', 'sky'].includes(p.color) ? p.color : 'lime',
@@ -89,9 +89,9 @@ export function makeHandler(getStores) {
     }
     async function checkCode(code) {
       const o = await owner();
-      if (!o) return { ok: false, status: 409, message: 'S·ªï ch∆∞a c√≥ m√£ ch·ªß s·ªï.' };
+      if (!o) return { ok: false, status: 409, message: 'Sổ chưa có mã chủ sổ.' };
       const lock = (await data.get('fails', { type: 'json' })) || { n: 0, until: 0 };
-      if (lock.until > Date.now()) return { ok: false, status: 429, message: 'Nh·∫≠p sai nhi·ªÅu l·∫ßn. Th·ª≠ l·∫°i sau 15 ph√∫t.' };
+      if (lock.until > Date.now()) return { ok: false, status: 429, message: 'Nhập sai nhiều lần. Thử lại sau 15 phút.' };
       const got = Buffer.from(hashCode(code || '', o.salt), 'hex');
       const want = Buffer.from(o.hash, 'hex');
       if (code && got.length === want.length && timingSafeEqual(got, want)) {
@@ -100,7 +100,7 @@ export function makeHandler(getStores) {
       }
       const n = lock.n + 1;
       await data.setJSON('fails', n >= MAX_FAILS ? { n: 0, until: Date.now() + LOCK_MS } : { n, until: 0 });
-      return { ok: false, status: 401, message: 'M√£ ch·ªß s·ªï kh√¥ng ƒë√∫ng.' };
+      return { ok: false, status: 401, message: 'Mã chủ sổ không đúng.' };
     }
     async function needOwner() {
       const r = await checkCode(req.headers.get('x-owner-code'));
@@ -108,11 +108,11 @@ export function makeHandler(getStores) {
     }
     async function storeMedia(key, dataUrl, kind) {
       const f = parseDataUrl(dataUrl);
-      if (!f) throw Object.assign(new Error('T·ªáp kh√¥ng h·ª£p l·ªá.'), { status: 400 });
-      if (kind === 'image' && !/^image\/(jpeg|png|webp|gif)$/.test(f.type)) throw Object.assign(new Error('·∫¢nh ph·∫£i l√† JPG, PNG, WEBP ho·∫∑c GIF.'), { status: 400 });
-      if (kind === 'audio' && !/^audio\//.test(f.type)) throw Object.assign(new Error('T·ªáp nh·∫°c kh√¥ng h·ª£p l·ªá.'), { status: 400 });
+      if (!f) throw Object.assign(new Error('Tệp không hợp lệ.'), { status: 400 });
+      if (kind === 'image' && !/^image\/(jpeg|png|webp|gif)$/.test(f.type)) throw Object.assign(new Error('Ảnh phải là JPG, PNG, WEBP hoặc GIF.'), { status: 400 });
+      if (kind === 'audio' && !/^audio\//.test(f.type)) throw Object.assign(new Error('Tệp nhạc không hợp lệ.'), { status: 400 });
       const max = kind === 'image' ? MAX_IMAGE : MAX_AUDIO;
-      if (f.bytes.length > max) throw Object.assign(new Error(kind === 'image' ? '·∫¢nh l·ªõn h∆°n 3 MB.' : 'T·ªáp nh·∫°c l·ªõn h∆°n 3,5 MB.'), { status: 413 });
+      if (f.bytes.length > max) throw Object.assign(new Error(kind === 'image' ? 'Ảnh lớn hơn 3 MB.' : 'Tệp nhạc lớn hơn 3,5 MB.'), { status: 413 });
       await media.set(key, f.bytes, { metadata: { type: f.type } });
       return 'api/media/' + key + '?v=' + Date.now().toString(36);
     }
@@ -124,9 +124,9 @@ export function makeHandler(getStores) {
       }
 
       if (route === 'claim' && req.method === 'POST') {
-        if (await owner()) return fail(409, 'S·ªï ƒë√£ c√≥ m√£ ch·ªß s·ªï.');
+        if (await owner()) return fail(409, 'Sổ đã có mã chủ sổ.');
         const { code } = await body();
-        if (typeof code !== 'string' || code.trim().length < 6) return fail(400, 'M√£ c·∫ßn √≠t nh·∫•t 6 k√Ω t·ª±.');
+        if (typeof code !== 'string' || code.trim().length < 6) return fail(400, 'Mã cần ít nhất 6 ký tự.');
         const salt = randomBytes(16).toString('hex');
         await data.setJSON('owner', { salt, hash: hashCode(code.trim(), salt), at: new Date().toISOString() });
         return json({ ok: true });
@@ -144,20 +144,20 @@ export function makeHandler(getStores) {
 
       if (route === 'media' && req.method === 'GET' && parts[1]) {
         const r = await media.getWithMetadata(parts[1], { type: 'arrayBuffer' });
-        if (!r || !r.data) return fail(404, 'Kh√¥ng t√¨m th·∫•y t·ªáp.');
+        if (!r || !r.data) return fail(404, 'Không tìm thấy tệp.');
         return new Response(r.data, { headers: { 'content-type': (r.metadata && r.metadata.type) || 'application/octet-stream', 'cache-control': 'public, max-age=31536000, immutable', ...CORS } });
       }
 
       if (route === 'poems' && parts[1]) {
         const id = parts[1];
-        if (!ID_RE.test(id)) return fail(400, 'M√£ b√†i kh√¥ng h·ª£p l·ªá.');
+        if (!ID_RE.test(id)) return fail(400, 'Mã bài không hợp lệ.');
         const denied = await needOwner();
         if (denied) return denied;
 
         if (req.method === 'PUT') {
           const { poem } = await body();
-          if (!poem || typeof poem !== 'object') return fail(400, 'Thi·∫øu b√†i th∆°.');
-          if (!String(poem.text || '').trim()) return fail(400, 'B√†i th∆° c√≤n tr·ªëng.');
+          if (!poem || typeof poem !== 'object') return fail(400, 'Thiếu bài thơ.');
+          if (!String(poem.text || '').trim()) return fail(400, 'Bài thơ còn trống.');
           const p = cleanPoem(poem, id);
           if (/^data:/.test(p.image)) p.image = await storeMedia(id + '-img', p.image, 'image');
           else if (p.image && !/^(api\/media\/|library\/media\/|https:\/\/)/.test(p.image)) p.image = '';
@@ -185,9 +185,9 @@ export function makeHandler(getStores) {
         }
       }
 
-      return fail(404, 'Kh√¥ng c√≥ ƒë∆∞·ªùng n√†y.');
+      return fail(404, 'Không có đường này.');
     } catch (e) {
-      return fail(e.status || 500, e.status ? e.message : 'M√°y ch·ªß g·∫∑p l·ªói: ' + (e.message || e));
+      return fail(e.status || 500, e.status ? e.message : 'Máy chủ gặp lỗi: ' + (e.message || e));
     }
   };
 }
