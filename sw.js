@@ -1,6 +1,6 @@
 /* Poenote service worker: mở được khi mất mạng.
-   Giao diện: dùng bản đã lưu, cập nhật ngầm. Thư viện và GitHub API: luôn lấy mới. */
-var CACHE = 'poenote-v2';
+   Trang và mã: lấy mới trên mạng trước. Phông chữ, biểu tượng: dùng bản đã lưu. API thư viện: luôn đi mạng. */
+var CACHE = 'poenote-v3';
 var SHELL = ['write.html', 'index.html', 'manifest.webmanifest',
   'assets/poenote.css', 'assets/common.js', 'assets/engine.js', 'assets/seed.js',
   'assets/fonts/Labrada-VariableFont_wght.ttf', 'assets/fonts/Labrada-Italic-VariableFont_wght.ttf',
@@ -19,6 +19,15 @@ self.addEventListener('fetch', function (e) {
   if (req.method !== 'GET' || url.origin !== location.origin) return;
   if (/^\/(library|api|\.netlify)\//.test(url.pathname)) return; // dữ liệu thơ: luôn đi mạng
   var key = url.pathname.endsWith('/') ? url.pathname + 'index.html' : url.pathname;
+  // Trang HTML và mã JS/CSS: lấy bản mới trên mạng trước, mất mạng mới dùng bản đã lưu
+  if (req.mode === 'navigate' || /\.(html|js|css|webmanifest)$/.test(key)) {
+    e.respondWith(caches.open(CACHE).then(function (c) {
+      return fetch(req).then(function (r) { if (r.ok) c.put(key, r.clone()); return r; })
+        .catch(function () { return c.match(key, { ignoreSearch: true }).then(function (hit) { return hit || c.match('write.html'); }); });
+    }));
+    return;
+  }
+  // Phông chữ, biểu tượng: dùng bản đã lưu, cập nhật ngầm
   e.respondWith(caches.open(CACHE).then(function (c) {
     return c.match(key, { ignoreSearch: true }).then(function (hit) {
       var net = fetch(req).then(function (r) { if (r.ok) c.put(key, r.clone()); return r; });
