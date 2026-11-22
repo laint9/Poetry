@@ -45,7 +45,8 @@
   P.isOwner = function () { return !!P.token() || !!P.ls('poenote.owner'); };
   P.siteUrl = function () {
     var c = P.cfg();
-    if (/github\.io$/.test(location.hostname)) return location.origin + location.pathname.replace(/[^/]*$/, '');
+    // trang đang chạy trên mạng (Netlify, GitHub Pages…): chia sẻ đúng địa chỉ đang dùng
+    if (/^https?:$/.test(location.protocol) && !/^(localhost|127\.|\[::1\]|0\.0\.0\.0)/.test(location.hostname)) return location.origin + location.pathname.replace(/[^/]*$/, '');
     return 'https://' + c.owner.toLowerCase() + '.github.io/' + c.repo + '/';
   };
   P.rawUrl = function (path) { var c = P.cfg(); return 'https://raw.githubusercontent.com/' + c.owner + '/' + c.repo + '/' + c.branch + '/' + path; };
@@ -300,3 +301,8 @@
   };
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') P.closeSheet(); });
 })();
+
+/* Cài như ứng dụng: service worker cho phép mở Poenote khi mất mạng */
+if ('serviceWorker' in navigator && /^https:$/.test(location.protocol)) {
+  window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+}
