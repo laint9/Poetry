@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ff4b12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Poenote">
+<title>Poenote</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/poenote.css">
+<style>
+.hero { padding-block: 16px 6px; }
+.dots { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
+.dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; padding: 0; }
+.dot[aria-pressed="true"] { border-color: var(--text); box-shadow: inset 0 0 0 3px var(--bg); }
+.dots .tools { margin-left: auto; display: flex; gap: 6px; }
+.write { display: flex; flex-direction: column; gap: 10px; padding-block: 14px 120px; }
+#title { font-family: var(--f-poem); font-weight: 700; font-size: 26px; border: 0; background: transparent; padding: 4px 0; outline: none; width: 100%; }
+#title::placeholder, #poem::placeholder { color: var(--muted); opacity: .7; }
+#poem { font-family: var(--f-poem); font-size: 21px; line-height: 1.7; border: 0; border-top: 1.5px solid var(--line); background: transparent; padding: 12px 0; outline: none; resize: none; min-height: 220px; width: 100%; overflow: hidden; }
+.status { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.status .btn { margin-left: auto; }
+.lines { display: flex; flex-direction: column; gap: 6px; }
+.ln { display: flex; gap: 6px; align-items: flex-start; }
+.ln .no { width: 18px; flex: none; text-align: right; font-size: 11px; color: var(--muted); padding-top: 12px; font-variant-numeric: tabular-nums; }
+.syls { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.syl { position: relative; display: inline-flex; flex-direction: column; align-items: center; min-width: 34px; padding: 11px 5px 3px; border-radius: 8px; border: 1px solid transparent; background: color-mix(in srgb, var(--bang) 13%, var(--surface)); line-height: 1.05; }
+.syl.T { background: color-mix(in srgb, var(--trac) 15%, var(--surface)); }
+.syl .w { font-family: var(--f-poem); font-size: 16px; }
+.syl .t { font-size: 9.5px; margin-top: 3px; font-weight: 600; color: var(--bang); }
+.syl.T .t { color: var(--trac); }
+.syl .exp { position: absolute; top: 1px; left: 0; right: 0; text-align: center; font-size: 9px; font-weight: 700; color: var(--ok); }
+.syl.bad { border-color: var(--err); box-shadow: inset 0 -2px 0 var(--err); }
+.syl.bad .exp { color: var(--err); }
+.syl.rh::after { content: attr(data-rh); position: absolute; top: -6px; right: -4px; min-width: 15px; height: 15px; border-radius: 8px; background: var(--ink); color: #fff; font-size: 9.5px; font-weight: 700; line-height: 15px; text-align: center; padding: 0 3px; }
+.syl.rh.rbad::after { background: var(--err); } .syl.rh.rwarn::after { background: var(--warn); }
+details.ana { border-top: 1.5px solid var(--line); padding-top: 10px; }
+details.ana summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; }
+details.ana summary::-webkit-details-marker { display: none; }
+details.ana summary::after { content: "＋"; margin-left: auto; color: var(--muted); }
+details.ana[open] summary::after { content: "－"; }
+.issues { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.issue { display: grid; grid-template-columns: 6px minmax(0,1fr); gap: 10px; padding: 9px 10px; border-radius: 10px; background: var(--soft); font-size: 13.5px; text-align: left; border: 0; width: 100%; }
+.issue i { border-radius: 3px; } .issue.error i { background: var(--err); } .issue.warn i { background: var(--warn); } .issue.info i { background: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1.5px solid transparent; background: color-mix(in srgb, var(--bang) 13%, var(--surface)); border-radius: 999px; padding: 5px 12px; font-family: var(--f-poem); font-size: 17px; }
+.chip.T { background: color-mix(in srgb, var(--trac) 15%, var(--surface)); }
+.chip.dim { opacity: .5; } .chip sup { font-family: var(--f-ui); font-size: 10px; color: var(--muted); margin-left: 3px; }
+.chip:active { border-color: var(--text); }
+.h3 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; margin: 18px 0 8px; }
+.h3:first-child { margin-top: 0; }
+.ex { font-family: var(--f-poem); font-size: 16px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.ex span { display: block; font-family: var(--f-ui); font-size: 11.5px; color: var(--muted); }
+.tpl { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; display: flex; flex-direction: column; gap: 3px; margin-top: 8px; overflow-x: auto; }
+.tpl b.B { color: var(--bang); } .tpl b.T { color: var(--trac); } .tpl b.V { color: var(--orange); text-decoration: underline; }
+.steps { font-size: 14px; }
+.mini { max-width: 260px; margin: 0 auto 14px; }
+</style>
+</head>
+<body>
+<header class="bar"><div class="col">
+  <a class="mark" href="write.html">Poenote</a>
+  <a class="ibtn" href="index.html" id="libLink"></a>
+  <button class="ibtn" type="button" id="gear" aria-label="Cài đặt"></button>
+</div></header>
+
+<main>
+  <section class="col hero">
+    <div id="hero"></div>
+    <div class="dots" id="dots" role="group" aria-label="Màu khối chữ"></div>
+  </section>
+
+  <section class="col write">
+    <span class="muted small" id="editNote"></span>
+    <input id="title" type="text" placeholder="Tên bài thơ" autocomplete="off" aria-label="Tên bài thơ">
+    <div class="seg" id="forms" role="group" aria-label="Thể thơ"></div>
+    <textarea id="poem" spellcheck="false" placeholder="Gõ thơ ở đây, mỗi câu một dòng…" aria-label="Nội dung bài thơ"></textarea>
+    <div class="status" id="status"></div>
+    <details class="ana" id="ana">
+      <summary><span class="lab">Nhịp & vần từng chữ</span><span class="muted small">bấm chữ để có gợi ý</span></summary>
+      <div class="lines" id="lines" style="margin-top:10px"></div>
+    </details>
+  </section>
+</main>
+
+<button class="fab" type="button" id="fab" aria-label="Lưu vào Laint's Poem"></button>
+<input type="file" id="imgFile" accept="image/*" hidden>
+<input type="file" id="audFile" accept="audio/*,.mp3,.m4a,.wav" hidden>
+<input type="file" id="corpusFile" accept=".json,.txt" hidden>
+
+<script src="assets/engine.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/common.js"></script>
+<script>
+(function () {
+  'use strict';
+  var P = window.Poenote, T = window.ThiBut, $ = P.$, $$ = P.$$, esc = P.esc;
+  var cfg = P.cfg();
+  $('#libLink').innerHTML = P.ICONS.book + '<span>' + esc(cfg.libraryName) + '</span>';
+  $('#gear').innerHTML = P.ICONS.gear;
+  $('#fab').innerHTML = P.ICONS.plus;
+  P.ls('poenote.owner', true);
+
+  /* ---------- bản nháp ---------- */
+  var DEMO = { title: 'Bến quê', text: 'Chiều về trên bến sông quê\nCon đò nhỏ chở bao nhiêu nỗi niềm\nHàng tre nghiêng bóng lặng im\nMẹ ngồi vá áo đợi chờ con xa', form: 'auto', color: 'lime', image: '', music: null, demo: true };
+  var d = P.ls('poenote.draft') || DEMO;
+  var memMusic = null; // tệp nhạc quá lớn để giữ trong bộ nhớ trình duyệt
+  function saveDraft() {
+    var copy = Object.assign({}, d);
+    if (copy.music && copy.music.type === 'file' && /^data:/.test(copy.music.src) && copy.music.src.length > 2e6) { memMusic = copy.music; copy.music = null; }
+    if (!P.ls('poenote.draft', copy)) { copy.image = ''; P.ls('poenote.draft', copy); }
+  }
+  $('#title').value = d.title || '';
+  $('#poem').value = d.text || '';
+
+  /* ---------- kho tham khảo ---------- */
+  // kho tham khảo lớn (hàng nghìn bài) nằm trong IndexedDB, chỉ trên máy này
+  function idb(mode, val) {
+    return new Promise(function (res) {
+      try {
+        var rq = indexedDB.open('poenote', 1);
+        rq.onupgradeneeded = function () { rq.result.createObjectStore('kv'); };
+        rq.onerror = function () { res(null); };
+        rq.onsuccess = function () {
+          var tx = rq.result.transaction('kv', mode === 'get' ? 'readonly' : 'readwrite'), st = tx.objectStore('kv');
+          var op = mode === 'get' ? st.get('corpus') : st.put(val, 'corpus');
+          op.onsuccess = function () { res(mode === 'get' ? op.result : true); };
+          op.onerror = function () { res(null); };
+        };
+      } catch (e) { res(null); }
+    });
+  }
+  var extra = [], libPoems = (P.ls('poenote.libcache') || {}).poems || [];
+  var corpus, index, sim;
+  function rebuild() {
+    corpus = (window.THIBUT_SEED || []).concat(extra).concat(libPoems.filter(function (p) { return p.id !== d.id; }).map(function (p) { return { title: p.title, author: cfg.libraryName, text: p.text }; }));
+    index = T.buildInventory(corpus); sim = T.buildSimIndex(corpus);
+  }
+  rebuild();
+  P.loadLibrary().then(function (lib) { libPoems = lib.poems; rebuild(); });
+  idb('get').then(function (v) { if (v && v.length) { extra = v; rebuild(); } });
+
+  /* ---------- hero ---------- */
+  function heroData() { return Object.assign({}, d, { form: result ? result.form : '', createdAt: d.createdAt || new Date().toISOString(), music: d.music || memMusic }); }
+  function renderHero() {
+    $('#hero').innerHTML = P.notebook(heroData(), { editable: true });
+    $$('.dot').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.c === d.color ? 'true' : 'false'); });
+  }
+  $('#dots').innerHTML = P.COLORS.map(function (c) { return '<button type="button" class="dot" data-c="' + c[0] + '" style="background:var(--' + c[0] + ')" aria-label="Màu ' + c[1] + '"></button>'; }).join('') +
+    '<span class="tools"><button type="button" class="ibtn" style="color:var(--text);border-color:var(--text)" data-act="image">' + P.ICONS.photo + '<span>Ảnh</span></button><button type="button" class="ibtn" style="color:var(--text);border-color:var(--text)" data-act="music">' + P.ICONS.note + '<span>Nhạc</span></button></span>';
+  $('#dots').addEventListener('click', function (e) {
+    var b = e.target.closest('.dot'); if (b) { d.color = b.dataset.c; saveDraft(); renderHero(); }
+    var a = e.target.closest('[data-act]'); if (a) act(a.dataset.act);
+  });
+  $('#hero').addEventListener('click', function (e) { var a = e.target.closest('[data-act]'); if (a) { e.stopPropagation(); act(a.dataset.act); } });
+  $('#hero').addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.dataset.act) act(e.target.dataset.act); });
+  function act(a) { if (a === 'image') imageSheet(); if (a === 'music') musicSheet(); }
+
+  /* ---------- ảnh ---------- */
+  function imageSheet() {
+    if (!d.image) { $('#imgFile').click(); return; }
+    var sh = P.sheet('Ảnh bìa', '<div class="row"><button class="btn pri" type="button" id="imgChange">Đổi ảnh khác</button><button class="btn" type="button" id="imgDel">Bỏ ảnh</button></div><p class="note" style="margin-top:12px">Ảnh được thu nhỏ còn 1400px trước khi lưu để thư viện tải nhanh trên điện thoại.</p>');
+    $('#imgChange', sh).onclick = function () { P.closeSheet(); $('#imgFile').click(); };
+    $('#imgDel', sh).onclick = function () { d.image = ''; saveDraft(); renderHero(); P.closeSheet(); };
+  }
+  $('#imgFile').addEventListener('change', function (e) {
+    var f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    P.toast('Đang xử lý ảnh…');
+    P.shrinkImage(f).then(function (u) { d.image = u; d.demo = false; saveDraft(); renderHero(); P.toast('Đã gắn ảnh.'); }, function (err) { P.toast(err.message); });
+  });
+
+  /* ---------- nhạc ---------- */
+  function musicSheet() {
+    var m = d.music || memMusic;
+    var sh = P.sheet('Nhạc cho bài thơ',
+      '<p class="small" style="margin-top:0">Dán link bài hát từ <b>Spotify</b>, <b>YouTube / YouTube Music</b>, <b>Apple Music</b> hoặc <b>SoundCloud</b>. Trong ứng dụng đó, bấm <i>Chia sẻ → Sao chép liên kết</i>.</p>' +
+      '<div class="row"><input class="field" id="mUrl" type="url" inputmode="url" placeholder="https://open.spotify.com/track/…" value="' + esc(m && m.url || '') + '"></div>' +
+      '<input class="field" id="mTitle" type="text" placeholder="Tên bài hát – ca sĩ (không bắt buộc)" value="' + esc(m && m.title || '') + '" style="margin-top:8px">' +
+      '<div id="mPrev" style="margin-top:12px"></div>' +
+      '<div class="row" style="margin-top:12px"><button class="btn pri" type="button" id="mOk">Gắn nhạc</button><button class="btn" type="button" id="mFile">Tải tệp nhạc lên</button>' + (m ? '<button class="btn ghost" type="button" id="mDel">Bỏ nhạc</button>' : '') + '</div>' +
+      '<p class="note" style="margin-top:14px">Kho nhạc của Instagram không mở cho ứng dụng ngoài, nên Poenote không lấy nhạc từ đó được. Spotify là lựa chọn gần nhất: người xem nghe đoạn 30 giây, ai đăng nhập Spotify thì nghe trọn bài. Tệp nhạc tự tải lên (MP3/M4A, tối đa 15 MB) phát trọn bài cho mọi người, nhưng chỉ nên dùng nhạc bạn có quyền chia sẻ.</p>');
+    function prev() {
+      var pm = P.parseMusic($('#mUrl', sh).value);
+      $('#mPrev', sh).innerHTML = pm ? P.musicPlayer(Object.assign(pm, { title: '' })) : ($('#mUrl', sh).value.trim() ? '<p class="small" style="color:var(--err)">Link chưa đúng. Hãy dán link bắt đầu bằng https://</p>' : (m && m.type === 'file' ? P.musicPlayer(m) : ''));
+    }
+    $('#mUrl', sh).addEventListener('input', prev); prev();
+    $('#mOk', sh).onclick = function () {
+      var pm = P.parseMusic($('#mUrl', sh).value);
+      if (!pm) { P.toast('Hãy dán một link bài hát.'); return; }
+      pm.title = $('#mTitle', sh).value.trim(); d.music = pm; memMusic = null; saveDraft(); renderHero(); P.closeSheet(); P.toast('Đã gắn nhạc ' + pm.label + '.');
+    };
+    $('#mFile', sh).onclick = function () { $('#audFile').click(); };
+    if ($('#mDel', sh)) $('#mDel', sh).onclick = function () { d.music = null; memMusic = null; saveDraft(); renderHero(); P.closeSheet(); };
+  }
+  $('#audFile').addEventListener('change', function (e) {
+    var f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    if (f.size > 15 * 1024 * 1024) { P.toast('Tệp nhạc lớn hơn 15 MB. Hãy cắt ngắn hoặc dùng link Spotify.'); return; }
+    var r = new FileReader();
+    r.onload = function () {
+      var title = ($('#mTitle') && $('#mTitle').value.trim()) || f.name.replace(/\.[^.]+$/, '');
+      d.music = { type: 'file', src: r.result, title: title, label: 'Tệp nhạc' };
+      saveDraft(); renderHero(); P.closeSheet(); P.toast('Đã gắn tệp nhạc «' + title + '».');
+    };
+    r.readAsDataURL(f);
+  });
+
+  /* ---------- soạn và phân tích ---------- */
+  var formKeys = Object.keys(T.FORMS);
+  $('#forms').innerHTML = formKeys.map(function (k) { return '<button type="button" data-f="' + k + '">' + esc(T.FORMS[k].name) + '</button>'; }).join('');
+  $('#forms').addEventListener('click', function (e) { var b = e.target.closest('[data-f]'); if (!b) return; d.form = b.dataset.f; saveDraft(); analyze(); });
+
+  var result = null, selected = null, timer = null;
+  function grow() { var t = $('#poem'); t.style.height = 'auto'; t.style.height = (t.scrollHeight + 4) + 'px'; }
+  $('#poem').addEventListener('input', function () { d.text = this.value; d.demo = false; grow(); clearTimeout(timer); timer = setTimeout(function () { saveDraft(); analyze(); }, 160); });
+  $('#title').addEventListener('input', function () { d.title = this.value; d.demo = false; clearTimeout(timer); timer = setTimeout(function () { saveDraft(); renderHero(); }, 160); });
+
+  function analyze() {
+    result = T.checkPoem(d.text || '', d.form || 'auto');
+    $$('#forms [data-f]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.f === (d.form || 'auto') ? 'true' : 'false'); });
+    var e = result.issues.filter(function (i) { return i.level === 'error'; }).length, w = result.issues.filter(function (i) { return i.level === 'warn'; }).length;
+    var h = '';
+    if (result.lines.length) {
+      h += '<span class="pill">' + esc(T.FORMS[result.form].name) + (result.meta.luat ? ' · ' + result.meta.luat : '') + '</span>';
+      if (result.score != null) h += '<span class="pill ' + (result.score === 100 ? 'ok' : '') + '">' + result.score + '% đúng luật</span>';
+      if (e) h += '<span class="pill err">' + e + ' lỗi</span>';
+      if (w) h += '<span class="pill warn">' + w + ' vần ép</span>';
+      if (!e && !w) h += '<span class="pill ok">Ổn</span>';
+    }
+    h += '<button class="btn sm" type="button" id="assist">' + P.ICONS.spark.replace('<svg', '<svg width="16" height="16"') + 'Trợ lý</button>';
+    $('#status').innerHTML = h;
+    renderLines(); renderHero();
+  }
+  $('#status').addEventListener('click', function (e) { if (e.target.closest('#assist')) assistSheet('check'); else if (e.target.closest('.pill')) assistSheet('check'); });
+
+  function renderLines() {
+    var r = result, h = '';
+    if (!r.lines.length) { $('#lines').innerHTML = '<p class="muted small">Gõ thơ để xem thanh bằng trắc và vị trí gieo vần của từng chữ.</p>'; return; }
+    r.lines.forEach(function (l, li) {
+      h += '<div class="ln"><span class="no">' + (li + 1) + '</span><div class="syls">';
+      l.syl.forEach(function (s, pi) {
+        var c = r.state[li][pi], cls = 'syl ' + s.bt, at = '';
+        if (c.exp) cls += c.ok ? '' : ' bad';
+        if (c.rhyme) { var worst = 2; c.rhyme.forEach(function (g) { worst = Math.min(worst, r.links[g].score); }); cls += ' rh' + (worst === 0 ? ' rbad' : worst < 1 ? ' rwarn' : ''); at = ' data-rh="' + c.rhyme.map(function (g) { return g + 1; }).join('·') + '"'; }
+        h += '<button type="button" class="' + cls + '" data-l="' + li + '" data-p="' + (pi + 1) + '"' + at + '>' + (c.exp ? '<span class="exp">' + c.exp + '</span>' : '') + '<span class="w">' + esc(s.text) + '</span><span class="t">' + s.toneName + '</span></button>';
+      });
+      h += '</div></div>';
+    });
+    $('#lines').innerHTML = h;
+  }
+  $('#lines').addEventListener('click', function (e) { var b = e.target.closest('.syl'); if (!b) return; selected = { l: +b.dataset.l, p: +b.dataset.p }; suggestSheet(); });
+
+  /* ---------- gợi ý chữ ---------- */
+  function chip(w, extra, cls) { var a = T.analyzeSyllable(w); return '<button type="button" class="chip ' + a.bt + (cls ? ' ' + cls : '') + '" data-w="' + esc(w) + '">' + esc(w) + (extra ? '<sup>' + esc(extra) + '</sup>' : '') + '</button>'; }
+  function examples(s, n) {
+    var out = [];
+    for (var w in index.lastSyl) {
+      if (T.rhymeScore(s, w) < 2) continue;
+      index.lastSyl[w].forEach(function (pl) { if (out.length >= n) return; var p = corpus[pl[0]], l = T.parsePoem(p.text)[pl[1]]; if (l) out.push('<div class="ex">' + esc(l.text) + '<span>' + esc(p.title) + ' — ' + esc(p.author || 'Khuyết danh') + '</span></div>'); });
+      if (out.length >= n) break;
+    }
+    return out.join('');
+  }
+  function suggestSheet() {
+    var li = selected.l, p = selected.p, line = result.lines[li], s = line.syl[p - 1], c = result.state[li][p - 1], bt = c.exp || null, targets = [];
+    (c.rhyme || []).forEach(function (g) { var lk = result.links[g], o = (lk.a[0] === li && lk.a[1] === p) ? lk.b : lk.a; targets.push({ s: result.lines[o[0]].syl[o[1] - 1], at: o, lk: lk }); });
+    var h = '<div class="note" style="color:var(--text)"><div style="font-family:var(--f-poem);font-size:26px;font-weight:700">' + esc(s.text) + '</div>Câu ' + (li + 1) + ', chữ ' + p + ' · thanh ' + s.toneName + ' (' + (s.bt === 'B' ? 'bằng' : 'trắc') + ')';
+    if (bt) h += '<br>Luật: <b style="color:' + (c.ok ? 'var(--ok)' : 'var(--err)') + '">' + esc(c.why) + '</b>';
+    targets.forEach(function (t) { h += '<br>Phải hiệp vần với «<b>' + esc(t.s.text) + '</b>» (câu ' + (t.at[0] + 1) + ') — hiện tại: <b>' + T.rhymeLabel(t.lk.score) + '</b>'; });
+    if (!bt && !targets.length) h += '<br>Vị trí tự do (bất luận).';
+    h += '</div>';
+    targets.forEach(function (t) {
+      var list = T.suggestRhymes(t.s, bt, index, { limit: 50 }), ph = [];
+      h += '<div class="h3">Hiệp vần với «' + esc(t.s.text) + '»</div><div class="chips">' + (list.map(function (x) { return chip(x.syl, x.score >= 2 ? '' : 'thông'); }).join('') || '<span class="muted small">Chưa có gợi ý.</span>') + '</div>';
+      list.slice(0, 40).forEach(function (x) { x.phrases.forEach(function (q) { if (ph.length < 14) ph.push(q); }); });
+      if (ph.length) h += '<div class="h3">Cụm hai chữ (thay hai chữ cuối)</div><div class="chips">' + ph.map(function (q) { return '<button type="button" class="chip" data-phrase="' + esc(q) + '">' + esc(q) + '</button>'; }).join('') + '</div>';
+    });
+    var tv = T.toneVariants(s.text).filter(function (v) { return v.syl !== s.lower && (!bt || v.bt === bt); });
+    if (tv.length) h += '<div class="h3">Giữ vần, đổi thanh</div><div class="chips">' + tv.map(function (v) { return chip(v.syl, v.tone, index.inv[v.syl] ? '' : 'dim'); }).join('') + '</div>';
+    if (p > 1) {
+      var nx = T.suggestNext(line.syl[p - 2].lower, bt, index, 20).filter(function (x) { return x.syl !== s.lower; });
+      if (nx.length) h += '<div class="h3">Hay đi sau «' + esc(line.syl[p - 2].text) + '»</div><div class="chips">' + nx.map(function (x) { var off = targets.length && !targets.every(function (t) { return T.rhymeScore(t.s, x.syl) >= 1; }); return chip(x.syl, '', off ? 'dim' : ''); }).join('') + '</div>';
+    }
+    var ex = examples(s, 4); if (ex) h += '<div class="h3">Câu thơ cùng vần “' + esc(s.rime) + '”</div>' + ex;
+    var sh = P.sheet('Gợi ý chữ', h);
+    sh.addEventListener('click', function (e) {
+      var b = e.target.closest('.chip'); if (!b) return;
+      if (b.dataset.phrase) replaceWords(li, p, b.dataset.phrase.split(' ')); else replaceWords(li, p, [b.dataset.w]);
+      P.closeSheet();
+    });
+  }
+  function replaceWords(li, p, words) {
+    var lines = (d.text || '').replace(/\r/g, '').split('\n'), src = result.lines[li].src, raw = lines[src];
+    var re = /[0-9a-zA-ZÀ-ỹđĐ̀-ͯ]+/g, m, hits = [];
+    while ((m = re.exec(raw))) if (/[a-zA-ZÀ-ỹđĐ]/.test(m[0])) hits.push({ i: m.index, t: m[0] });
+    var st = p - words.length; if (st < 0) return;
+    var a = hits[st], b = hits[p - 1]; if (!a || !b) return;
+    var rep = words.join(' '); if (/^[A-ZÀ-ỸĐ]/.test(a.t)) rep = rep.charAt(0).toUpperCase() + rep.slice(1);
+    var old = raw.slice(a.i, b.i + b.t.length);
+    lines[src] = raw.slice(0, a.i) + rep + raw.slice(b.i + b.t.length);
+    d.text = lines.join('\n'); $('#poem').value = d.text; grow(); saveDraft(); analyze();
+    P.toast('«' + old + '» → «' + rep + '»');
+  }
+
+  /* ---------- trợ lý ---------- */
+  function template(form) {
+    function row(n, mp, lab) { var s = []; for (var i = 1; i <= n; i++) s.push(mp[i] ? '<b class="' + mp[i] + '">' + (mp[i] === 'V' ? 'B' : mp[i]) + '</b>' : '·'); return '<div>' + s.join(' ') + (lab ? '  <span class="muted">' + lab + '</span>' : '') + '</div>'; }
+    if (form === 'lucbat') return row(6, { 2: 'B', 4: 'T', 6: 'V' }, 'lục') + row(8, { 2: 'B', 4: 'T', 6: 'V', 8: 'V' }, 'bát');
+    if (form === 'stlb') return row(7, { 3: 'T', 5: 'B', 7: 'T' }, 'thất') + row(7, { 3: 'B', 5: 'T', 7: 'V' }, 'thất') + row(6, { 2: 'B', 4: 'T', 6: 'V' }, 'lục') + row(8, { 2: 'B', 4: 'T', 6: 'V', 8: 'V' }, 'bát');
+    if (/that_|ngu_/.test(form)) {
+      var n = form === 'ngu_tu' ? 5 : 7, rows = form === 'that_bat' ? 8 : 4, rl = form === 'that_bat' ? [0, 1, 3, 5, 7] : [0, 1, 3], s0 = result.meta.luat === 'luật trắc' ? 'T' : 'B', out = '';
+      for (var k = 0; k < rows; k++) { var s = (((k + 1) >> 1) % 2 === 0) ? s0 : (s0 === 'B' ? 'T' : 'B'), o = s === 'B' ? 'T' : 'B', mp = { 2: s, 4: o }; if (n === 7) mp[6] = s; mp[n] = rl.indexOf(k) >= 0 ? 'V' : 'T'; out += row(n, mp, 'câu ' + (k + 1)); }
+      return out;
+    }
+    return '';
+  }
+  function assistSheet(tab) {
+    var sh = P.sheet('Trợ lý thơ', '<div class="seg" id="aTabs"><button type="button" data-t="check">Kiểm tra luật</button><button type="button" data-t="rhyme">Tra vần</button><button type="button" data-t="sim">Dò trùng</button></div><div id="aBody" style="margin-top:14px"></div>');
+    function show(t) {
+      $$('#aTabs button', sh).forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.t === t ? 'true' : 'false'); });
+      var body = $('#aBody', sh), r = result, h = '';
+      if (t === 'check') {
+        var f = T.FORMS[r.form];
+        h += '<div class="note" style="color:var(--text)"><b style="font-family:var(--f-poem);font-size:19px">' + esc(f.name) + '</b>' + (r.meta.luat ? ' · ' + r.meta.luat : '') + '<div class="small" style="margin-top:4px">' + esc(f.desc || '') + '</div>' + (template(r.form) ? '<div class="tpl">' + template(r.form) + '</div>' : '') + '</div>';
+        if (['lucbat', 'stlb'].indexOf(r.form) < 0 && r.lines.length > 1) h += '<div class="h3">Sơ đồ vần chân</div><div><b style="font-family:ui-monospace,Menlo,monospace;letter-spacing:.1em">' + esc(r.scheme.text) + '</b> <span class="muted small">AABB vần liền · ABAB vần chéo · ABBA vần ôm</span></div>';
+        h += '<div class="h3">Nhận xét (' + r.issues.length + ')</div>' + (r.issues.length ? '<ul class="issues">' + r.issues.map(function (i, k) { return '<li><button type="button" class="issue ' + i.level + '" data-k="' + k + '"><i></i><span>' + esc(i.msg) + '</span></button></li>'; }).join('') + '</ul>' : '<p class="muted">Không có lỗi theo luật của thể này.</p>');
+      }
+      if (t === 'rhyme') {
+        h += '<div class="row"><input class="field" id="rq" type="text" placeholder="Gõ một chữ, ví dụ: trăng" style="flex:1 1 140px"><select class="field" id="rbt" style="width:auto"><option value="">Mọi thanh</option><option value="B" selected>Bằng</option><option value="T">Trắc</option></select></div><div id="rOut" style="margin-top:12px"></div>';
+      }
+      if (t === 'sim') {
+        var res = T.findSimilar(d.text || '', sim, { min: 0.34 });
+        h += '<p class="small muted" style="margin-top:0">So từng câu với ' + sim.lines.length + ' câu trong kho tham khảo và các bài đã lưu ở ' + esc(cfg.libraryName) + '.</p>';
+        h += res.length ? res.map(function (x) { var p = corpus[x.ref.poem]; return '<div class="ex"><b>' + Math.round(x.score * 100) + '%</b> · câu ' + (x.line + 1) + ': ' + esc(x.text) + '<span>≈ ' + esc(x.ref.text) + ' — ' + esc(p.title) + ' (' + esc(p.author || '') + ')</span></div>'; }).join('') : '<p class="muted">Không có câu nào giống đáng kể.</p>';
+      }
+      body.innerHTML = h;
+      if (t === 'rhyme') {
+        var run = function () {
+          var q = $('#rq', sh).value.trim().split(/\s+/).pop(), out = $('#rOut', sh);
+          if (!q) { out.innerHTML = ''; return; }
+          var list = T.suggestRhymes(T.analyzeSyllable(q), $('#rbt', sh).value || null, index, { limit: 120 });
+          out.innerHTML = '<div class="chips">' + list.map(function (x) { return '<span class="chip ' + x.bt + '">' + esc(x.syl) + (x.score < 2 ? '<sup>thông</sup>' : '') + '</span>'; }).join('') + '</div>' + (examples(T.analyzeSyllable(q), 5) ? '<div class="h3">Câu thơ cùng vần</div>' + examples(T.analyzeSyllable(q), 5) : '');
+        };
+        $('#rq', sh).addEventListener('input', run); $('#rbt', sh).addEventListener('change', run); $('#rq', sh).focus();
+      }
+    }
+    sh.addEventListener('click', function (e) {
+      var b = e.target.closest('#aTabs button'); if (b) show(b.dataset.t);
+      var is = e.target.closest('.issue'); if (is) { var i = result.issues[+is.dataset.k]; if (i.line != null && i.pos) { selected = { l: i.line, p: i.pos }; suggestSheet(); } }
+    });
+    show(tab || 'check');
+  }
+
+  /* ---------- lưu (+) ---------- */
+  function buildPoem() {
+    var now = new Date().toISOString();
+    return { id: d.id || P.newId(), title: (d.title || '').trim() || firstLine(), text: (d.text || '').replace(/\s+$/, ''), form: result.form, color: d.color || 'lime', image: d.image || '', music: d.music || memMusic || null, createdAt: d.createdAt || now, updatedAt: now };
+  }
+  function firstLine() { var l = (d.text || '').split('\n').filter(function (x) { return x.trim(); })[0] || 'Không tên'; return l.replace(/[,.;:!?…]+$/, ''); }
+  $('#fab').addEventListener('click', function () {
+    if (!(d.text || '').trim()) { P.toast('Bài thơ còn trống.'); $('#poem').focus(); return; }
+    var poem = buildPoem(), e = result.issues.filter(function (i) { return i.level === 'error'; }).length, conn = !!P.token();
+    var sh = P.sheet(d.id ? 'Cập nhật bài thơ' : 'Lưu vào ' + cfg.libraryName,
+      '<div class="mini">' + P.notebook(poem, { compact: true }) + '</div>' +
+      (e ? '<p class="note">Bài còn ' + e + ' chỗ chưa đúng luật ' + esc(T.FORMS[result.form].name) + '. Phá cách là quyền của người viết, bạn vẫn lưu được.</p>' : '') +
+      (conn ? '' : '<p class="note">Chưa kết nối GitHub nên bài sẽ được giữ trên máy này và tự đồng bộ khi bạn kết nối trong ⚙ Cài đặt. Người khác chỉ thấy bài sau khi đồng bộ.</p>') +
+      '<div class="steps muted" id="steps" style="margin:10px 0"></div>' +
+      '<div class="row"><button class="btn pri" type="button" id="doSave">' + (d.id ? 'Cập nhật' : 'Lưu vào ' + esc(cfg.libraryName)) + '</button><button class="btn ghost" type="button" data-close2>Để sau</button></div>');
+    $('[data-close2]', sh).onclick = P.closeSheet;
+    $('#doSave', sh).onclick = function () {
+      var btn = this; btn.disabled = true;
+      var done = function (synced) {
+        libPoems = [poem].concat(libPoems.filter(function (q) { return q.id !== poem.id; }));
+        var cache = P.ls('poenote.libcache') || { poems: [] }; cache.poems = libPoems; P.ls('poenote.libcache', cache);
+        d = { title: '', text: '', form: d.form, color: d.color, image: '', music: null }; memMusic = null; saveDraft();
+        $('#title').value = ''; $('#poem').value = ''; grow(); $('#editNote').textContent = ''; analyze(); rebuild();
+        var share = P.siteUrl() + '#poem-' + poem.id;
+        var b = sh.querySelector('.sheet-b');
+        b.innerHTML = '<div class="mini">' + P.notebook(Object.assign({}, poem, { _pending: !synced }), { compact: true }) + '</div>' +
+          '<p style="text-align:center;margin:0 0 14px"><b>' + (synced ? 'Đã lưu vào ' + esc(cfg.libraryName) + '.' : 'Đã giữ trên máy, chờ đồng bộ.') + '</b>' + (synced ? '<br><span class="small muted">Trang công khai cập nhật sau khoảng 1 phút.</span>' : '') + '</p>' +
+          '<div class="row" style="justify-content:center"><a class="btn pri" href="index.html#poem-' + esc(poem.id) + '">Xem trong thư viện</a>' + (synced ? '<button class="btn" type="button" id="shareOne">' + P.ICONS.share.replace('<svg', '<svg width="16" height="16"') + 'Chia sẻ bài</button>' : '') + '<button class="btn ghost" type="button" id="newOne">Viết bài mới</button></div>';
+        if ($('#shareOne', sh)) $('#shareOne', sh).onclick = function () { P.copy(share); };
+        $('#newOne', sh).onclick = function () { P.closeSheet(); $('#title').focus(); };
+      };
+      if (!conn) { if (P.queuePoem(poem)) done(false); else { btn.disabled = false; P.toast('Bộ nhớ máy đã đầy. Hãy kết nối GitHub để lưu.'); } return; }
+      P.publishPoem(poem, function (m) { $('#steps', sh).textContent = m; }).then(function () { done(true); }, function (err) {
+        P.queuePoem(poem);
+        $('#steps', sh).innerHTML = '<span style="color:var(--err)">Chưa lưu được lên GitHub: ' + esc(err.message) + '.</span> Bài đã được giữ trên máy và sẽ đồng bộ lại sau.';
+        btn.disabled = false; btn.textContent = 'Thử lại';
+      });
+    };
+  });
+
+  /* ---------- cài đặt ---------- */
+  $('#gear').addEventListener('click', settingsSheet);
+  function settingsSheet() {
+    var c = P.cfg(), pend = (P.ls('poenote.pending') || []).length;
+    var sh = P.sheet('Cài đặt',
+      '<div class="lab">Link chia sẻ thư viện</div><div class="row" style="margin-top:6px"><input class="field" readonly value="' + esc(P.siteUrl()) + '" style="flex:1 1 180px"><button class="btn sm" type="button" id="sShare">' + P.ICONS.share.replace('<svg', '<svg width="16" height="16"') + 'Chia sẻ</button></div>' +
+      '<p class="small muted">Ai có link này đều xem được ' + esc(c.libraryName) + ', không cần đăng nhập.</p>' +
+      '<div class="lab" style="margin-top:18px">Kết nối GitHub (để nút + lưu lên mạng)</div>' +
+      '<div class="row" style="margin-top:6px"><input class="field" id="sOwner" value="' + esc(c.owner) + '" placeholder="tài khoản" style="flex:1 1 100px"><input class="field" id="sRepo" value="' + esc(c.repo) + '" placeholder="repo" style="flex:1 1 100px"></div>' +
+      '<input class="field" id="sTok" type="password" autocomplete="off" placeholder="' + (P.token() ? 'Đã lưu mã truy cập · dán mã mới để thay' : 'Dán mã truy cập (fine-grained token)') + '" style="margin-top:8px">' +
+      '<p class="small muted">Tạo mã tại GitHub → Settings → Developer settings → Fine-grained tokens. Chỉ chọn repo <b>' + esc(c.repo) + '</b>, quyền <b>Contents: Read and write</b>. Mã chỉ lưu trên điện thoại này.</p>' +
+      '<div class="row"><button class="btn pri" type="button" id="sSave">Lưu & kiểm tra</button>' + (P.token() ? '<button class="btn ghost" type="button" id="sOut">Gỡ mã</button>' : '') + '</div><div id="sMsg" class="small" style="margin-top:8px"></div>' +
+      (pend ? '<div class="note" style="margin-top:14px">' + pend + ' bài đang chờ đồng bộ. <button class="btn sm" type="button" id="sSync">Đồng bộ ngay</button></div>' : '') +
+      '<div class="lab" style="margin-top:20px">Kho thơ tham khảo</div><p class="small muted" style="margin-top:6px">Dùng cho gợi ý chữ và dò trùng. Hiện có ' + corpus.length + ' bài. Nhập tệp JSON tạo bằng tools/thivien_fetch.py.</p>' +
+      '<div class="row"><button class="btn sm" type="button" id="sImp">Nhập tệp JSON</button>' + (extra.length ? '<button class="btn sm ghost" type="button" id="sClr">Xoá ' + extra.length + ' bài đã nhập</button>' : '') + '</div>');
+    $('#sShare', sh).onclick = function () { P.copy(P.siteUrl()); };
+    $('#sSave', sh).onclick = function () {
+      P.cfg({ owner: $('#sOwner', sh).value.trim() || c.owner, repo: $('#sRepo', sh).value.trim() || c.repo });
+      var t = $('#sTok', sh).value.trim(); if (t) P.token(t);
+      var msg = $('#sMsg', sh); msg.textContent = 'Đang kiểm tra…';
+      P.gh.check().then(function (r) {
+        var can = r.permissions && r.permissions.push;
+        msg.innerHTML = can ? '<span style="color:var(--ok)">Đã kết nối ' + esc(r.full_name) + '. Nút + sẽ lưu thẳng lên thư viện.</span>' : '<span style="color:var(--warn)">Thấy repo nhưng mã chưa có quyền ghi. Hãy cấp “Contents: Read and write”.</span>';
+        if (can && (P.ls('poenote.pending') || []).length) { msg.innerHTML += '<br>Đang đồng bộ bài chờ…'; P.syncPending().then(function (n) { msg.innerHTML += ' Xong ' + n + ' bài.'; }); }
+      }, function (err) { msg.innerHTML = '<span style="color:var(--err)">Không kết nối được: ' + esc(err.message) + '</span>'; });
+    };
+    if ($('#sOut', sh)) $('#sOut', sh).onclick = function () { P.token(''); P.closeSheet(); P.toast('Đã gỡ mã truy cập khỏi máy này.'); };
+    if ($('#sSync', sh)) $('#sSync', sh).onclick = function () { if (!P.token()) { P.toast('Hãy kết nối GitHub trước.'); return; } this.disabled = true; P.syncPending(function (m) { P.toast(m); }).then(function (n) { P.toast('Đã đồng bộ ' + n + ' bài.'); P.closeSheet(); }, function (e) { P.toast('Lỗi: ' + e.message); }); };
+    $('#sImp', sh).onclick = function () { $('#corpusFile').click(); };
+    if ($('#sClr', sh)) $('#sClr', sh).onclick = function () { extra = []; idb('put', []); rebuild(); P.closeSheet(); P.toast('Đã xoá kho đã nhập.'); };
+  }
+  $('#corpusFile').addEventListener('change', function (e) {
+    var f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    var r = new FileReader();
+    r.onload = function () {
+      try {
+        var j = JSON.parse(r.result), arr = (Array.isArray(j) ? j : j.poems || []).filter(function (p) { return p && p.text; }).map(function (p) { return { title: p.title || '', author: p.author || '', text: String(p.text).slice(0, 40000) }; });
+        var seen = {}; extra.forEach(function (p) { seen[p.title + '|' + p.author] = 1; });
+        arr = arr.filter(function (p) { var k = p.title + '|' + p.author; if (seen[k]) return false; seen[k] = 1; return true; });
+        extra = extra.concat(arr); P.closeSheet(); P.toast('Đang nạp ' + arr.length + ' bài…');
+        setTimeout(function () {
+          rebuild();
+          idb('put', extra).then(function (ok) { P.toast(ok ? 'Đã nhập ' + arr.length + ' bài. Kho tham khảo có ' + corpus.length + ' bài.' : 'Đã nạp ' + arr.length + ' bài, nhưng máy không cho lưu lâu dài; tải lại trang sẽ mất.', 4000); });
+        }, 30);
+      } catch (err) { P.toast('Tệp không phải JSON hợp lệ.'); }
+    };
+    r.readAsText(f, 'utf-8');
+  });
+
+  /* ---------- mở bài để sửa (#edit-id) ---------- */
+  function openEdit() {
+    var m = location.hash.match(/^#edit-(.+)$/); if (!m) return;
+    P.loadLibrary().then(function (lib) {
+      var p = lib.poems.filter(function (q) { return q.id === m[1]; })[0];
+      if (!p) { P.toast('Không tìm thấy bài để sửa.'); return; }
+      d = { id: p.id, title: p.title, text: p.text, form: 'auto', color: p.color, image: p.image, music: p.music, createdAt: p.createdAt };
+      $('#title').value = d.title; $('#poem').value = d.text; grow(); saveDraft(); analyze();
+      $('#editNote').textContent = 'Đang sửa bài đã lưu. Bấm + để cập nhật.';
+      history.replaceState(null, '', 'write.html');
+    });
+  }
+
+  analyze(); grow(); openEdit();
+  if (d.demo) $('#editNote').textContent = 'Bản nháp mẫu có 2 chỗ lạc vần: mở “Nhịp & vần từng chữ” và bấm chữ có số đỏ để thử.';
+  if (d.id) $('#editNote').textContent = 'Đang sửa bài đã lưu. Bấm + để cập nhật.';
+})();
+</script>
+</body>
+</html>
