@@ -22,19 +22,20 @@
 .mast h1 { font-family: var(--f-poem); font-weight: 800; font-size: clamp(40px, 13vw, 58px); line-height: .95; letter-spacing: -0.03em; margin: 0; }
 .mast p { margin: 8px 0 0; color: var(--muted); }
 .strip { margin-top: 14px; background: var(--beige); color: var(--ink); border-radius: 12px; padding: 9px 14px; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; display: flex; justify-content: space-between; gap: 10px; }
-.shelf { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 18px max(16px, calc(50% - 150px)) 22px; scrollbar-width: none; }
+.shelf { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 20px max(16px, calc(50% - 140px)) 26px; scrollbar-width: none; align-items: stretch; }
+.shelf .nwrap { flex: none; width: 76%; max-width: 280px; scroll-snap-align: center; }
+.shelf .nwrap .sticky { min-height: 330px; }
+.shelf .nwrap:nth-child(odd) { transform: rotate(-1.2deg); } .shelf .nwrap:nth-child(even) { transform: rotate(1deg); }
 .shelf::-webkit-scrollbar { display: none; }
 .sec { padding-block: 6px 110px; }
 .sec h2 { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; color: var(--muted); margin: 0 0 12px; }
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.grid a { text-decoration: none; color: inherit; display: block; min-width: 0; }
-.grid .nb { border-radius: 16px; }
-.grid .nb-top { height: 30px; padding: 0 10px; } .grid .nb-top .w { font-size: 14px; } .grid .rings { gap: 5px; } .grid .rings i { width: 6px; height: 6px; }
-.grid .nb-label { font-size: 10px; padding: 6px 10px; }
-.grid .nb-blk { padding: 8px 10px 10px; min-height: 70px; } .grid .nb-blk h3 { font-size: 14px; margin: 3px 0 0; } .grid .nb-blk .k { font-size: 10px; }
-.grid .music-chip { left: 6px; bottom: 6px; font-size: 10.5px; padding: 3px 8px; }
+.grid { gap: 14px; }
+.grid .nwrap { min-width: 0; }
+.grid .sticky { min-height: 190px; }
 .empty { text-align: center; padding: 30px 10px; }
-.empty .phone { margin: 0 auto 16px; width: 70%; }
+.empty .nwrap { margin: 0 auto 20px; width: 72%; max-width: 260px; transform: rotate(-1.2deg); }
+.empty .sticky { min-height: 260px; text-align: left; }
 /* đọc một bài */
 .reader { position: fixed; inset: 0; z-index: 35; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .reader .col { padding-block: 16px 60px; }
@@ -92,11 +93,11 @@
     $('#count').textContent = ps.length + ' bài thơ';
     $('#latest').textContent = ps[0] ? 'Mới nhất ' + P.fmtDate(ps[0].createdAt) : '';
     $('#allTitle').textContent = ps.length > 3 ? 'Tất cả các trang' : '';
-    $('#shelf').innerHTML = ps.slice(0, 6).map(function (p) { return '<a class="phone" href="#poem-' + esc(p.id) + '">' + P.notebook(p) + '</a>'; }).join('');
+    $('#shelf').innerHTML = ps.slice(0, 6).map(function (p) { return '<a class="nwrap" href="#poem-' + esc(p.id) + '">' + P.noteCard(p) + '</a>'; }).join('');
     $('#shelf').hidden = !ps.length;
-    $('#grid').innerHTML = ps.length > 3 ? ps.map(function (p) { return '<a href="#poem-' + esc(p.id) + '">' + P.notebook(p, { compact: true }) + '</a>'; }).join('') : '';
+    $('#grid').innerHTML = ps.length > 3 ? ps.map(function (p) { return '<a class="nwrap" href="#poem-' + esc(p.id) + '">' + P.noteCard(p, { compact: true }) + '</a>'; }).join('') : '';
     $('#emptyBox').innerHTML = ps.length ? '' :
-      '<div class="empty"><div class="phone">' + P.notebook({ title: 'Trang đầu tiên', text: 'Cuốn sổ đang chờ bài thơ đầu tiên.', color: 'mint', createdAt: new Date().toISOString() }) + '</div>' +
+      '<div class="empty"><div class="nwrap">' + P.noteCard({ title: 'Trang đầu tiên', text: 'Cuốn sổ đang chờ\nbài thơ đầu tiên.', color: 'mint', createdAt: new Date().toISOString() }) + '</div>' +
       (owner ? '<p>Sổ còn trống. Mở <b>Poenote</b>, viết một bài rồi bấm <b>+</b> để đặt vào đây.</p><a class="btn pri" href="write.html">Viết bài đầu tiên</a>' : '<p class="muted">Sổ thơ chưa có bài nào. Quay lại sau nhé.</p>') + '</div>';
     route();
   }
@@ -125,7 +126,7 @@
       del.disabled = true; del.textContent = 'Đang xoá…';
       P.deletePoem(p.id).then(function () {
         lib.poems = lib.poems.filter(function (q) { return q.id !== p.id; });
-        P.toast(P.token() ? 'Đã xoá «' + p.title + '».' : 'Đã ẩn trên máy này; sẽ xoá hẳn khi kết nối GitHub.');
+        P.toast(P.token() ? 'Đã xoá «' + p.title + '».' : 'Đã ẩn trên máy này; sẽ xoá hẳn khi mở khoá sổ.');
         location.hash = ''; render();
       }, function (e) { del.disabled = false; del.textContent = 'Xoá'; P.toast('Không xoá được: ' + e.message); });
     };

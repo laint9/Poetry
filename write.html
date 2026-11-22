@@ -62,6 +62,11 @@ details.ana[open] summary::after { content: "－"; }
 .tpl b.B { color: var(--bang); } .tpl b.T { color: var(--trac); } .tpl b.V { color: var(--orange); text-decoration: underline; }
 .steps { font-size: 14px; }
 .mini { max-width: 260px; margin: 0 auto 14px; }
+.lockbar { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 10px 12px; border-radius: 12px; background: var(--soft); font-size: 13.5px; }
+.lockbar span { flex: 1; min-width: 0; }
+.lockbar.warn { background: #fff1d6; color: #5c3b00; }
+:root[data-theme="dark"] .lockbar.warn { background: #3a2c10; color: #f3d9a4; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lockbar.warn { background: #3a2c10; color: #f3d9a4; } }
 </style>
 </head>
 <body>
@@ -75,6 +80,7 @@ details.ana[open] summary::after { content: "－"; }
   <section class="col hero">
     <div id="hero"></div>
     <div class="dots" id="dots" role="group" aria-label="Màu khối chữ"></div>
+    <div class="lockbar" id="lockbar" hidden></div>
   </section>
 
   <section class="col write">
@@ -185,7 +191,7 @@ details.ana[open] summary::after { content: "－"; }
       '<input class="field" id="mTitle" type="text" placeholder="Tên bài hát – ca sĩ (không bắt buộc)" value="' + esc(m && m.title || '') + '" style="margin-top:8px">' +
       '<div id="mPrev" style="margin-top:12px"></div>' +
       '<div class="row" style="margin-top:12px"><button class="btn pri" type="button" id="mOk">Gắn nhạc</button><button class="btn" type="button" id="mFile">Tải tệp nhạc lên</button>' + (m ? '<button class="btn ghost" type="button" id="mDel">Bỏ nhạc</button>' : '') + '</div>' +
-      '<p class="note" style="margin-top:14px">Kho nhạc của Instagram không mở cho ứng dụng ngoài, nên Poenote không lấy nhạc từ đó được. Spotify là lựa chọn gần nhất: người xem nghe đoạn 30 giây, ai đăng nhập Spotify thì nghe trọn bài. Tệp nhạc tự tải lên (MP3/M4A, tối đa 15 MB) phát trọn bài cho mọi người, nhưng chỉ nên dùng nhạc bạn có quyền chia sẻ.</p>');
+      '<p class="note" style="margin-top:14px">Kho nhạc của Instagram không mở cho ứng dụng ngoài, nên Poenote không lấy nhạc từ đó được. Spotify là lựa chọn gần nhất: người xem nghe đoạn 30 giây, ai đăng nhập Spotify thì nghe trọn bài. Tệp nhạc tự tải lên (MP3/M4A, tối đa 3,5 MB) phát trọn bài cho mọi người, nhưng chỉ nên dùng nhạc bạn có quyền chia sẻ.</p>');
     function prev() {
       var pm = P.parseMusic($('#mUrl', sh).value);
       $('#mPrev', sh).innerHTML = pm ? P.musicPlayer(Object.assign(pm, { title: '' })) : ($('#mUrl', sh).value.trim() ? '<p class="small" style="color:var(--err)">Link chưa đúng. Hãy dán link bắt đầu bằng https://</p>' : (m && m.type === 'file' ? P.musicPlayer(m) : ''));
@@ -201,7 +207,7 @@ details.ana[open] summary::after { content: "－"; }
   }
   $('#audFile').addEventListener('change', function (e) {
     var f = e.target.files[0]; e.target.value = ''; if (!f) return;
-    if (f.size > 15 * 1024 * 1024) { P.toast('Tệp nhạc lớn hơn 15 MB. Hãy cắt ngắn hoặc dùng link Spotify.'); return; }
+    if (f.size > 3.5 * 1024 * 1024) { P.toast('Tệp nhạc lớn hơn 3,5 MB. Hãy cắt ngắn hoặc dùng link Spotify.'); return; }
     var r = new FileReader();
     r.onload = function () {
       var title = ($('#mTitle') && $('#mTitle').value.trim()) || f.name.replace(/\.[^.]+$/, '');
@@ -369,13 +375,16 @@ details.ana[open] summary::after { content: "－"; }
     var sh = P.sheet(d.id ? 'Cập nhật bài thơ' : 'Lưu vào ' + cfg.libraryName,
       '<div class="mini">' + P.notebook(poem, { compact: true }) + '</div>' +
       (e ? '<p class="note">Bài còn ' + e + ' chỗ chưa đúng luật ' + esc(T.FORMS[result.form].name) + '. Phá cách là quyền của người viết, bạn vẫn lưu được.</p>' : '') +
-      (conn ? '' : '<p class="note">Chưa kết nối GitHub nên bài sẽ được giữ trên máy này và tự đồng bộ khi bạn kết nối trong ⚙ Cài đặt. Người khác chỉ thấy bài sau khi đồng bộ.</p>') +
+      (conn ? '' : '<p class="note" style="color:var(--warn)"><b>Máy này chưa mở khoá sổ.</b> Bài sẽ chỉ nằm trên máy này, người khác chưa thấy. <button class="btn sm" type="button" id="goUnlock">Mở khoá sổ</button></p>') +
       '<div class="steps muted" id="steps" style="margin:10px 0"></div>' +
       '<div class="row"><button class="btn pri" type="button" id="doSave">' + (d.id ? 'Cập nhật' : 'Lưu vào ' + esc(cfg.libraryName)) + '</button><button class="btn ghost" type="button" data-close2>Để sau</button></div>');
     $('[data-close2]', sh).onclick = P.closeSheet;
+    if ($('#goUnlock', sh)) $('#goUnlock', sh).onclick = function () { P.closeSheet(); settingsSheet(); };
     $('#doSave', sh).onclick = function () {
       var btn = this; btn.disabled = true;
-      var done = function (synced) {
+      var done = function (synced, saved) {
+        if (saved) poem = saved;
+        setTimeout(lockbar, 0);
         libPoems = [poem].concat(libPoems.filter(function (q) { return q.id !== poem.id; }));
         var cache = P.ls('poenote.libcache') || { poems: [] }; cache.poems = libPoems; P.ls('poenote.libcache', cache);
         d = { title: '', text: '', form: d.form, color: d.color, image: '', music: null }; memMusic = null; saveDraft();
@@ -383,19 +392,71 @@ details.ana[open] summary::after { content: "－"; }
         var share = P.siteUrl() + '#poem-' + poem.id;
         var b = sh.querySelector('.sheet-b');
         b.innerHTML = '<div class="mini">' + P.notebook(Object.assign({}, poem, { _pending: !synced }), { compact: true }) + '</div>' +
-          '<p style="text-align:center;margin:0 0 14px"><b>' + (synced ? 'Đã lưu vào ' + esc(cfg.libraryName) + '.' : 'Đã giữ trên máy, chờ đồng bộ.') + '</b>' + (synced ? '<br><span class="small muted">Trang công khai cập nhật sau khoảng 1 phút.</span>' : '') + '</p>' +
+          '<p style="text-align:center;margin:0 0 14px"><b>' + (synced ? 'Đã lưu vào ' + esc(cfg.libraryName) + '.' : 'Đã giữ trên máy, chờ đồng bộ.') + '</b>' + (synced ? '<br><span class="small muted">Ai mở link thư viện đều thấy ngay.</span>' : '') + '</p>' +
           '<div class="row" style="justify-content:center"><a class="btn pri" href="index.html#poem-' + esc(poem.id) + '">Xem trong thư viện</a>' + (synced ? '<button class="btn" type="button" id="shareOne">' + P.ICONS.share.replace('<svg', '<svg width="16" height="16"') + 'Chia sẻ bài</button>' : '') + '<button class="btn ghost" type="button" id="newOne">Viết bài mới</button></div>';
         if ($('#shareOne', sh)) $('#shareOne', sh).onclick = function () { P.copy(share); };
         $('#newOne', sh).onclick = function () { P.closeSheet(); $('#title').focus(); };
       };
-      if (!conn) { if (P.queuePoem(poem)) done(false); else { btn.disabled = false; P.toast('Bộ nhớ máy đã đầy. Hãy kết nối GitHub để lưu.'); } return; }
-      P.publishPoem(poem, function (m) { $('#steps', sh).textContent = m; }).then(function () { done(true); }, function (err) {
+      if (!conn) { if (P.queuePoem(poem)) done(false); else { btn.disabled = false; P.toast('Bộ nhớ máy đã đầy. Hãy mở khoá sổ để lưu lên thư viện.'); } return; }
+      P.publishPoem(poem, function (m) { $('#steps', sh).textContent = m; }).then(function (saved) { done(true, saved); }, function (err) {
         P.queuePoem(poem);
-        $('#steps', sh).innerHTML = '<span style="color:var(--err)">Chưa lưu được lên GitHub: ' + esc(err.message) + '.</span> Bài đã được giữ trên máy và sẽ đồng bộ lại sau.';
+        if (err.status === 401) { P.token(''); lockbar(); }
+        $('#steps', sh).innerHTML = '<span style="color:var(--err)">Chưa lưu được vào thư viện: ' + esc(err.message) + '.</span> ' + (err.status === 401 ? 'Hãy mở khoá sổ lại trong ⚙.' : 'Bài đã được giữ trên máy và sẽ tự đồng bộ khi có mạng.');
         btn.disabled = false; btn.textContent = 'Thử lại';
       });
     };
   });
+
+  /* ---------- mã chủ sổ ---------- */
+  // Thư viện nằm trên Netlify. Chỉ máy đã nhập đúng mã chủ sổ mới lưu, sửa, xoá được.
+  function lockbar() {
+    var el = $('#lockbar');
+    if (P.token()) { el.hidden = true; return; }
+    var n = (P.ls('poenote.pending') || []).length;
+    el.hidden = false; el.className = 'lockbar warn';
+    el.innerHTML = '<span><b>Chưa mở khoá sổ.</b> Bấm + lúc này bài chỉ nằm trên máy' + (n ? ' (' + n + ' bài đang chờ)' : '') + '.</span><button class="btn sm" type="button">Mở khoá</button>';
+    el.querySelector('button').onclick = settingsSheet;
+  }
+  function autoSync() {
+    if (!P.token() || !(P.ls('poenote.pending') || []).length) return;
+    P.syncPending().then(function (n) {
+      if (n) { P.toast('Đã đưa ' + n + ' bài đang chờ vào ' + cfg.libraryName + '.'); P.loadLibrary().then(function (lib) { libPoems = lib.poems; rebuild(); }); }
+      lockbar();
+    }, function (e) { if (e.status === 401) { P.token(''); lockbar(); } });
+  }
+  function ownerBox(sh) {
+    var box = $('#ownerBox', sh);
+    function unlocked() {
+      box.innerHTML = '<p class="small" style="color:var(--ok);margin:0 0 8px">Máy này đã mở khoá sổ. Nút + lưu thẳng vào ' + esc(cfg.libraryName) + '.</p><button class="btn sm ghost" type="button" id="oOut">Khoá lại máy này</button>';
+      $('#oOut', box).onclick = function () { P.token(''); lockbar(); P.closeSheet(); P.toast('Đã khoá. Máy này không lưu lên thư viện nữa.'); };
+    }
+    function form(claimed) {
+      box.innerHTML = (claimed
+        ? '<p class="small muted" style="margin:0 0 8px">Nhập mã chủ sổ anh đã đặt để máy này lưu được vào thư viện.</p>'
+        : '<p class="small muted" style="margin:0 0 8px">Sổ chưa có mã. Đặt một mã (ít nhất 6 ký tự) mà chỉ anh biết. Mỗi máy mới chỉ cần nhập mã này một lần.</p>') +
+        '<input class="field" id="oCode" type="password" autocomplete="current-password" placeholder="' + (claimed ? 'Mã chủ sổ' : 'Đặt mã chủ sổ') + '">' +
+        (claimed ? '' : '<input class="field" id="oCode2" type="password" autocomplete="new-password" placeholder="Nhập lại mã" style="margin-top:8px">') +
+        '<div class="row" style="margin-top:8px"><button class="btn pri" type="button" id="oGo">' + (claimed ? 'Mở khoá' : 'Đặt mã và mở khoá') + '</button></div><div id="oMsg" class="small" style="margin-top:8px"></div>';
+      $('#oGo', box).onclick = function () {
+        var code = $('#oCode', box).value.trim(), msg = $('#oMsg', box), btn = this;
+        if (code.length < 6) { msg.innerHTML = '<span style="color:var(--err)">Mã cần ít nhất 6 ký tự.</span>'; return; }
+        if (!claimed && code !== $('#oCode2', box).value.trim()) { msg.innerHTML = '<span style="color:var(--err)">Hai lần nhập không khớp.</span>'; return; }
+        btn.disabled = true; msg.textContent = 'Đang kiểm tra…';
+        (claimed ? P.server.login(code) : P.server.claim(code)).then(function () {
+          P.token(code); lockbar(); unlocked();
+          P.toast('Đã mở khoá sổ trên máy này.'); autoSync();
+        }, function (e) {
+          btn.disabled = false;
+          if (!claimed && e.status === 409) { form(true); $('#oMsg', box).innerHTML = '<span style="color:var(--warn)">Sổ đã có mã. Hãy nhập mã đó.</span>'; return; }
+          msg.innerHTML = '<span style="color:var(--err)">' + esc(e.message) + '</span>';
+        });
+      };
+    }
+    if (P.token()) { unlocked(); return; }
+    P.server.status().then(function (st) { form(st.claimed); }, function (e) { box.innerHTML = '<p class="small" style="color:var(--err)">Không liên lạc được với thư viện: ' + esc(e.message) + '</p>'; });
+  }
+  lockbar();
+  autoSync();
 
   /* ---------- cài đặt ---------- */
   $('#gear').addEventListener('click', settingsSheet);
@@ -404,27 +465,13 @@ details.ana[open] summary::after { content: "－"; }
     var sh = P.sheet('Cài đặt',
       '<div class="lab">Link chia sẻ thư viện</div><div class="row" style="margin-top:6px"><input class="field" readonly value="' + esc(P.siteUrl()) + '" style="flex:1 1 180px"><button class="btn sm" type="button" id="sShare">' + P.ICONS.share.replace('<svg', '<svg width="16" height="16"') + 'Chia sẻ</button></div>' +
       '<p class="small muted">Ai có link này đều xem được ' + esc(c.libraryName) + ', không cần đăng nhập.</p>' +
-      '<div class="lab" style="margin-top:18px">Kết nối GitHub (để nút + lưu lên mạng)</div>' +
-      '<div class="row" style="margin-top:6px"><input class="field" id="sOwner" value="' + esc(c.owner) + '" placeholder="tài khoản" style="flex:1 1 100px"><input class="field" id="sRepo" value="' + esc(c.repo) + '" placeholder="repo" style="flex:1 1 100px"></div>' +
-      '<input class="field" id="sTok" type="password" autocomplete="off" placeholder="' + (P.token() ? 'Đã lưu mã truy cập · dán mã mới để thay' : 'Dán mã truy cập (fine-grained token)') + '" style="margin-top:8px">' +
-      '<p class="small muted">Tạo mã tại GitHub → Settings → Developer settings → Fine-grained tokens. Chỉ chọn repo <b>' + esc(c.repo) + '</b>, quyền <b>Contents: Read and write</b>. Mã chỉ lưu trên điện thoại này.</p>' +
-      '<div class="row"><button class="btn pri" type="button" id="sSave">Lưu & kiểm tra</button>' + (P.token() ? '<button class="btn ghost" type="button" id="sOut">Gỡ mã</button>' : '') + '</div><div id="sMsg" class="small" style="margin-top:8px"></div>' +
+      '<div class="lab" style="margin-top:18px">Mã chủ sổ</div><div id="ownerBox" style="margin-top:6px"><p class="small muted">Đang kiểm tra sổ…</p></div>' +
       (pend ? '<div class="note" style="margin-top:14px">' + pend + ' bài đang chờ đồng bộ. <button class="btn sm" type="button" id="sSync">Đồng bộ ngay</button></div>' : '') +
-      '<div class="lab" style="margin-top:20px">Kho thơ tham khảo</div><p class="small muted" style="margin-top:6px">Dùng cho gợi ý chữ và dò trùng. Hiện có ' + corpus.length + ' bài. Nhập tệp JSON tạo bằng tools/thivien_fetch.py.</p>' +
+      '<div class="lab" style="margin-top:20px">Kho thơ tham khảo</div><p class="small muted" style="margin-top:6px">Dùng cho gợi ý chữ và dò trùng. Hiện có ' + corpus.length + ' bài. Nhập tệp JSON hoặc .txt (chỉ lưu trên máy này).</p>' +
       '<div class="row"><button class="btn sm" type="button" id="sImp">Nhập tệp JSON</button>' + (extra.length ? '<button class="btn sm ghost" type="button" id="sClr">Xoá ' + extra.length + ' bài đã nhập</button>' : '') + '</div>');
     $('#sShare', sh).onclick = function () { P.copy(P.siteUrl()); };
-    $('#sSave', sh).onclick = function () {
-      P.cfg({ owner: $('#sOwner', sh).value.trim() || c.owner, repo: $('#sRepo', sh).value.trim() || c.repo });
-      var t = $('#sTok', sh).value.trim(); if (t) P.token(t);
-      var msg = $('#sMsg', sh); msg.textContent = 'Đang kiểm tra…';
-      P.gh.check().then(function (r) {
-        var can = r.permissions && r.permissions.push;
-        msg.innerHTML = can ? '<span style="color:var(--ok)">Đã kết nối ' + esc(r.full_name) + '. Nút + sẽ lưu thẳng lên thư viện.</span>' : '<span style="color:var(--warn)">Thấy repo nhưng mã chưa có quyền ghi. Hãy cấp “Contents: Read and write”.</span>';
-        if (can && (P.ls('poenote.pending') || []).length) { msg.innerHTML += '<br>Đang đồng bộ bài chờ…'; P.syncPending().then(function (n) { msg.innerHTML += ' Xong ' + n + ' bài.'; }); }
-      }, function (err) { msg.innerHTML = '<span style="color:var(--err)">Không kết nối được: ' + esc(err.message) + '</span>'; });
-    };
-    if ($('#sOut', sh)) $('#sOut', sh).onclick = function () { P.token(''); P.closeSheet(); P.toast('Đã gỡ mã truy cập khỏi máy này.'); };
-    if ($('#sSync', sh)) $('#sSync', sh).onclick = function () { if (!P.token()) { P.toast('Hãy kết nối GitHub trước.'); return; } this.disabled = true; P.syncPending(function (m) { P.toast(m); }).then(function (n) { P.toast('Đã đồng bộ ' + n + ' bài.'); P.closeSheet(); }, function (e) { P.toast('Lỗi: ' + e.message); }); };
+    ownerBox(sh);
+    if ($('#sSync', sh)) $('#sSync', sh).onclick = function () { if (!P.token()) { P.toast('Hãy mở khoá sổ trước.'); return; } this.disabled = true; P.syncPending(function (m) { P.toast(m); }).then(function (n) { P.toast('Đã đồng bộ ' + n + ' bài.'); P.closeSheet(); }, function (e) { P.toast('Lỗi: ' + e.message); }); };
     $('#sImp', sh).onclick = function () { $('#corpusFile').click(); };
     if ($('#sClr', sh)) $('#sClr', sh).onclick = function () { extra = []; idb('put', []); rebuild(); P.closeSheet(); P.toast('Đã xoá kho đã nhập.'); };
   }

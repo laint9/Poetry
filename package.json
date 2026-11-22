@@ -1,0 +1,9 @@
+{
+  "name": "poenote",
+  "private": true,
+  "type": "module",
+  "description": "Poenote — sổ tay làm thơ, thư viện Laint's Poem lưu trên Netlify Blobs.",
+  "dependencies": {
+    "@netlify/blobs": "11.1.7"
+  }
+}
